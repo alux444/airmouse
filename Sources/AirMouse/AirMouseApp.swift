@@ -8,7 +8,6 @@ struct AirMouseApp: App {
     var body: some Scene {
         Window("AirMouse", id: "main") {
             ContentView(controller: controller)
-                .preferredColorScheme(.light)
                 .onAppear { delegate.configure(controller: controller) }
         }
         .windowResizability(.contentSize)
