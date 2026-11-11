@@ -1,10 +1,10 @@
 # AirMouse
 
-AirMouse is a native macOS prototype for controlling your Mac with compatible AirPods. Motion stays on your Mac.
+AirMouse is a native macOS prototype for controlling your Mac using motion from compatible AirPods. The current motion implementation assumes the AirPods are being worn; closed-case control is not implemented. Motion stays on your Mac.
 
 ## Run it
 
-Requires macOS 14 or later, Xcode or the Swift toolchain, and headphones that provide motion data. AirPods 4 with ANC support head tracking.
+Requires macOS 14 or later, Xcode or the Swift toolchain, and headphones that provide motion data.
 
 ```sh
 ./build.sh
@@ -17,9 +17,5 @@ Use **Control–Option–Space** to start or pause from anywhere. Switching mode
 
 - **Pointer:** move the pointer with your head. Optionally enable dwell clicking: hold the pointer still outside AirMouse, then move away before the next click. Dwell clicking is off by default.
 - **Scroll:** tilt to scroll and return to centre to stop. Reverse the direction if needed.
-- **Presentation:** turn right or left to send the next or previous arrow key to the active app. Return to centre between turns. Reverse the turn direction if needed.
-- **Shortcuts:** assign each turn to Mission Control, a desktop switch, an app, or a named Apple Shortcut. Return to centre between turns. macOS keyboard shortcut settings affect Mission Control and desktop switching.
 
-Apps and shortcuts run only when assigned. AirMouse uses macOS Accessibility access for pointer, scrolling and keyboard actions. Some Apple Shortcuts may request additional permissions.
-
-Run `swift test` for motion and action tests. Live tracking, operating-system permissions and gesture comfort need a real Mac and compatible headphones.
+Run `swift test` for motion and action tests. Live tracking and permissions need a real Mac and compatible headphones.

@@ -1,6 +1,5 @@
 import AppKit
 import ApplicationServices
-import Carbon
 import SwiftUI
 
 @MainActor
@@ -12,22 +11,12 @@ final class MouseController: ObservableObject {
     @Published var sensitivity = 1.0
     @Published var dwellEnabled = false { didSet { if dwellEnabled != oldValue { pause() } } }
     @Published var reverseScroll = false
-    @Published var reverseTurns = false { didSet { if reverseTurns != oldValue { pause() } } }
-    @Published var leftAction: ShortcutAction = .none {
-        didSet { if leftAction != oldValue { leftDetail = ""; updateSetting("leftAction", leftAction.rawValue) } }
-    }
-    @Published var rightAction: ShortcutAction = .none {
-        didSet { if rightAction != oldValue { rightDetail = ""; updateSetting("rightAction", rightAction.rawValue) } }
-    }
-    @Published var leftDetail = "" { didSet { updateSetting("leftDetail", leftDetail) } }
-    @Published var rightDetail = "" { didSet { updateSetting("rightDetail", rightDetail) } }
+
 
     private let manager: HeadphoneMotion
     private let controls: SystemControls
-    private let preferences: UserDefaults
     private var pointerMotion = PointerMotion()
     private var dwellClick = DwellClick()
-    private var gestureMotion = GestureMotion()
     private var scrollMotion = ScrollMotion()
     private var connectionTimer: Timer?
     private var startedAt: TimeInterval?
@@ -37,14 +26,9 @@ final class MouseController: ObservableObject {
     private var session = 0
 
     init(manager: HeadphoneMotion = CoreMotionHeadphones(),
-         controls: SystemControls = MacSystemControls(), preferences: UserDefaults = .standard) {
+         controls: SystemControls = MacSystemControls()) {
         self.manager = manager
         self.controls = controls
-        self.preferences = preferences
-        leftAction = ShortcutAction(rawValue: preferences.string(forKey: "leftAction") ?? "") ?? .none
-        rightAction = ShortcutAction(rawValue: preferences.string(forKey: "rightAction") ?? "") ?? .none
-        leftDetail = preferences.string(forKey: "leftDetail") ?? ""
-        rightDetail = preferences.string(forKey: "rightDetail") ?? ""
         refreshConnection()
         connectionTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.checkConnection() }
@@ -76,16 +60,10 @@ final class MouseController: ObservableObject {
     private func resetMotion() {
         pointerMotion.reset()
         dwellClick.reset()
-        gestureMotion.reset()
         scrollMotion.reset()
         firstSampleAt = nil
         lastSampleAt = nil
         lastScrollAt = 0
-    }
-
-    private func updateSetting(_ key: String, _ value: String) {
-        preferences.set(value, forKey: key)
-        if isTracking { pause() }
     }
 
     private func refreshConnection() {
@@ -111,10 +89,6 @@ final class MouseController: ObservableObject {
         refreshConnection()
         guard isConnected else {
             message = "No headphone motion detected. Wear your AirPods and connect them to this Mac."
-            return
-        }
-        guard mode != .shortcuts || leftAction != .none || rightAction != .none else {
-            message = "Assign an action to at least one turn before starting."
             return
         }
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
@@ -154,10 +128,7 @@ final class MouseController: ObservableObject {
         switch mode {
         case .pointer: movePointer(yaw: yaw, pitch: pitch, time: time)
         case .scroll: scroll(pitch: pitch, time: time)
-        case .presentation, .shortcuts:
-            guard let direction = gestureMotion.update(yaw: yaw) else { return }
-            let effectiveDirection = reverseTurns ? direction.opposite : direction
-            performTurn(effectiveDirection)
+
         }
     }
 
@@ -180,32 +151,4 @@ final class MouseController: ObservableObject {
         controls.scroll(lines: lines)
     }
 
-    private func performTurn(_ direction: TurnDirection) {
-        if mode == .presentation {
-            controls.key(CGKeyCode(direction == .right ? kVK_RightArrow : kVK_LeftArrow), flags: [])
-            return
-        }
-        let action = direction == .left ? leftAction : rightAction
-        let detail = direction == .left ? leftDetail : rightDetail
-        performAction(action, detail: detail)
-    }
-
-    private func performAction(_ action: ShortcutAction, detail: String) {
-        let currentSession = session
-        let completion: (String?) -> Void = { [weak self] error in
-            guard let error else { return }
-            Task { @MainActor in
-                guard let self, self.session == currentSession else { return }
-                self.message = error
-            }
-        }
-        switch action {
-        case .none: break
-        case .missionControl: controls.key(CGKeyCode(kVK_UpArrow), flags: .maskControl)
-        case .previousDesktop: controls.key(CGKeyCode(kVK_LeftArrow), flags: .maskControl)
-        case .nextDesktop: controls.key(CGKeyCode(kVK_RightArrow), flags: .maskControl)
-        case .openApp: controls.openApp(at: detail, completion: completion)
-        case .runShortcut: controls.runShortcut(named: detail, completion: completion)
-        }
-    }
 }

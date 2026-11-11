@@ -30,7 +30,7 @@ struct ContentView: View {
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 3) {
                 Text("AirMouse").font(.title2.weight(.semibold))
-                Text("Hands-free controls for your Mac")
+                Text("Headphone motion · Case control unavailable")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -92,20 +92,7 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-        case .presentation:
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Turn right for next, left for previous.").font(.callout)
-                Toggle("Reverse turn direction", isOn: $controller.reverseTurns)
-                Text("Open your presentation after starting. Return to centre between turns.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        case .shortcuts:
-            VStack(alignment: .leading, spacing: 12) {
-                ShortcutSettings(leftAction: $controller.leftAction, rightAction: $controller.rightAction,
-                                 leftDetail: $controller.leftDetail, rightDetail: $controller.rightDetail)
-                Toggle("Reverse turn direction", isOn: $controller.reverseTurns)
-            }
+
         }
     }
 
