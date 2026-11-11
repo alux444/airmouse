@@ -8,31 +8,29 @@ struct ContentView: View {
             heading
             status
             Divider()
-            sensitivity
-            Divider()
-            HStack(alignment: .top, spacing: 9) {
-                Image(systemName: "hand.tap")
-                    .frame(width: 16)
-                Text("Use your trackpad or mouse to click.")
+            Picker("Control mode", selection: $controller.mode) {
+                ForEach(ControlMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
             }
-            .font(.callout)
-            .foregroundStyle(.secondary)
+            .pickerStyle(.segmented)
+            .accessibilityLabel("Control mode")
+            modeSettings
         }
         .padding(24)
-        .frame(width: 400)
+        .frame(width: 440)
     }
 
     private var heading: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(spacing: 12) {
             Image(systemName: "cursorarrow.motionlines")
                 .font(.system(size: 22))
                 .foregroundStyle(.secondary)
                 .frame(width: 38, height: 38)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 3) {
-                Text("AirMouse")
-                    .font(.title2.weight(.semibold))
-                Text("Control your pointer with AirPods")
+                Text("AirMouse").font(.title2.weight(.semibold))
+                Text("Hands-free controls for your Mac")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -41,7 +39,7 @@ struct ContentView: View {
 
     private var status: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 8) {
+            HStack(spacing: 8) {
                 Circle()
                     .fill(controller.isTracking ? Color.green : Color.secondary.opacity(0.5))
                     .frame(width: 7, height: 7)
@@ -53,19 +51,19 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
             Text(controller.message)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-
             HStack {
                 Button(controller.isTracking ? "Pause Tracking" : "Start Tracking") {
                     controller.toggleTracking()
                 }
                 .controlSize(.large)
-                .keyboardShortcut(.defaultAction)
+                if controller.isTracking {
+                    Button("Recenter") { controller.recenter() }
+                }
                 Spacer()
                 Text("⌃⌥ Space")
                     .font(.callout.monospaced())
@@ -75,11 +73,46 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private var modeSettings: some View {
+        switch controller.mode {
+        case .pointer:
+            VStack(alignment: .leading, spacing: 12) {
+                sensitivity
+                Toggle("Click when pointer rests", isOn: $controller.dwellEnabled)
+                Text("Hold still to click outside AirMouse. Move away before clicking again.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        case .scroll:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Tilt to scroll; return to centre to stop.").font(.callout)
+                Toggle("Reverse scroll direction", isOn: $controller.reverseScroll)
+                Text("Start while looking straight ahead. Use Recenter whenever you need to reset.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        case .presentation:
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Turn right for next, left for previous.").font(.callout)
+                Toggle("Reverse turn direction", isOn: $controller.reverseTurns)
+                Text("Open your presentation after starting. Return to centre between turns.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        case .shortcuts:
+            VStack(alignment: .leading, spacing: 12) {
+                ShortcutSettings(leftAction: $controller.leftAction, rightAction: $controller.rightAction,
+                                 leftDetail: $controller.leftDetail, rightDetail: $controller.rightDetail)
+                Toggle("Reverse turn direction", isOn: $controller.reverseTurns)
+            }
+        }
+    }
+
     private var sensitivity: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Pointer sensitivity")
-                    .font(.headline)
+                Text("Pointer sensitivity").font(.headline)
                 Spacer()
                 Text(String(format: "%.1f×", controller.sensitivity))
                     .monospacedDigit()

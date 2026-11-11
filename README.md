@@ -1,18 +1,25 @@
 # AirMouse
 
-Move your Mac's pointer with the motion sensors in your AirPods. AirMouse is an early, local macOS prototype built with SwiftUI and Core Motion.
+AirMouse is a native macOS prototype for controlling your Mac with compatible AirPods. Motion stays on your Mac.
 
 ## Run it
 
-Requires macOS 14 or later, Xcode or the Swift toolchain, and AirPods that provide headphone motion. AirPods 4 with ANC are a good fit.
+Requires macOS 14 or later, Xcode or the Swift toolchain, and headphones that provide motion data. AirPods 4 with ANC support head tracking.
 
 ```sh
 ./build.sh
 open build/AirMouse.app
 ```
 
-Put in your AirPods and connect them to the Mac. Choose **Start tracking** and allow Motion and Accessibility access if macOS asks. If Accessibility access is denied, enable AirMouse in System Settings → Privacy & Security → Accessibility, then try again. Use **Control–Option–Space** to start or pause from anywhere. Click with your trackpad or mouse.
+Put in your AirPods and connect them to the Mac. Start tracking and allow Motion and Accessibility access when requested. If Accessibility is already enabled but AirMouse still asks for access, quit AirMouse, remove its old entry from System Settings → Privacy & Security → Accessibility, and add the exact app you are opening. Development builds are ad-hoc signed, so rebuilding changes their identity and can require this again.
 
-The first motion sample establishes a baseline, and pausing clears it. Adjust sensitivity to suit your setup. Motion data stays on your Mac; AirMouse does not send it anywhere. The app is locally signed for development, so rebuilding may require Accessibility permission to be re-enabled.
+Use **Control–Option–Space** to start or pause from anywhere. Switching modes pauses tracking; start again while looking straight ahead to set the centre. Use **Recenter** to reset it.
 
-Run focused pointer-mapping tests with `swift test`. Hardware tracking and permission prompts require a real Mac and compatible headphones.
+- **Pointer:** move the pointer with your head. Optionally enable dwell clicking: hold the pointer still outside AirMouse, then move away before the next click. Dwell clicking is off by default.
+- **Scroll:** tilt to scroll and return to centre to stop. Reverse the direction if needed.
+- **Presentation:** turn right or left to send the next or previous arrow key to the active app. Return to centre between turns. Reverse the turn direction if needed.
+- **Shortcuts:** assign each turn to Mission Control, a desktop switch, an app, or a named Apple Shortcut. Return to centre between turns. macOS keyboard shortcut settings affect Mission Control and desktop switching.
+
+Apps and shortcuts run only when assigned. AirMouse uses macOS Accessibility access for pointer, scrolling and keyboard actions. Some Apple Shortcuts may request additional permissions.
+
+Run `swift test` for motion and action tests. Live tracking, operating-system permissions and gesture comfort need a real Mac and compatible headphones.
