@@ -3,6 +3,8 @@ import Foundation
 enum TurnDirection: Equatable {
     case left
     case right
+
+    var opposite: TurnDirection { self == .left ? .right : .left }
 }
 
 struct GestureMotion {
