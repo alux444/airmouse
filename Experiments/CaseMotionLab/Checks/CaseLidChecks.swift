@@ -17,7 +17,13 @@ struct CaseLidChecks {
             ["received_uptime": time, "primary_code": primary, "secondary_code": secondary]
         }
         let opened = try status([])
-        precondition(opened.baselineReady && !opened.closed)
+        precondition(opened.baselineReady && !opened.closed && !opened.caseIdentified)
+        let identifiedData = try JSONSerialization.data(withJSONObject: [
+            "open_baseline_verified": true,
+            "case_snapshot": ["root_identity_verified": true, "case_identity_verified": true]
+        ])
+        guard let identified = CaseLidStatus(data: identifiedData) else { fatalError("Invalid identified status") }
+        precondition(identified.caseIdentified)
         let closed = try status([report(1, 3, 0)])
         precondition(closed.closed)
         let reopened = try status([report(1, 3, 0), report(2, 2, 2), report(2.2, 2, 2)])

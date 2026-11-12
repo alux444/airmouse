@@ -3,6 +3,7 @@ import Foundation
 struct CaseLidStatus {
     let baselineReady: Bool
     let closed: Bool
+    let caseIdentified: Bool
     let error: String?
 
     init?(data: Data) {
@@ -10,6 +11,7 @@ struct CaseLidStatus {
               let snapshot = status["case_snapshot"] as? [String: Any] else { return nil }
         baselineReady = status["open_baseline_verified"] as? Bool == true &&
             snapshot["root_identity_verified"] as? Bool == true
+        caseIdentified = snapshot["case_identity_verified"] as? Bool == true
         error = snapshot["error"] as? String
         let reports = (status["earbud_state_events"] as? [[String: Any]] ?? []).compactMap { report -> LidReport? in
             guard let uptime = report["received_uptime"] as? Double,

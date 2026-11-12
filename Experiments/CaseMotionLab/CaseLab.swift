@@ -16,6 +16,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     @Published private(set) var trainedTaps = 0
     @Published private(set) var details = ""
     @Published private(set) var closed = false
+    @Published private(set) var caseIdentified = false
     @Published private(set) var calibration: CaseCalibration = .center
     @Published private(set) var orientationReady = false
     @Published private(set) var pointing = false
@@ -55,6 +56,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         catch { message = error.localizedDescription; return }
         pending.removeAll()
         closed = false
+        caseIdentified = false
         calibration = .center
         orientationReady = false
         pointing = false
@@ -229,6 +231,10 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
             return
         }
         if closed && !status.closed { stop("The case opened. The mouse stopped."); return }
+        if closed && status.caseIdentified && !caseIdentified {
+            caseIdentified = true
+            message = "Case ready. Set it down and hold it still to calibrate."
+        }
         if !closed && !status.baselineReady && received > 0 {
             message = "Motion is arriving. Waiting for the case to identify itself; keep the lid open."
         }
@@ -242,7 +248,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     }
 
     func captureCalibration() {
-        guard closed, ProcessInfo.processInfo.systemUptime - lastMotion < 1,
+        guard closed, caseIdentified, ProcessInfo.processInfo.systemUptime - lastMotion < 1,
               let pointer, pointer.capture() else {
             message = "Move the case farther in that direction and try again."
             return
@@ -252,18 +258,27 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     }
 
     func startPointer() {
-        guard closed, ProcessInfo.processInfo.systemUptime - lastMotion < 1, let pointer else { return }
+        guard closed, caseIdentified, ProcessInfo.processInfo.systemUptime - lastMotion < 1, let pointer else { return }
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         guard AXIsProcessTrustedWithOptions(options) else {
             message = "Allow AirMouse Case Lab in Accessibility, then try Start Mouse again."
             return
         }
-        guard pointer.start() else { message = "Wait for motion and complete calibration first."; return }
+        guard hotKey?.setEscapeEnabled(true) == true else {
+            message = "Escape couldn’t be registered. The mouse is still paused."
+            return
+        }
+        guard pointer.start() else {
+            hotKey?.setEscapeEnabled(false)
+            message = "Wait for motion and complete calibration first."
+            return
+        }
         pointing = true
-        message = "Mouse is on. Press Control–Option–Space to pause."
+        message = "Mouse is on. Press Escape to pause."
     }
 
     func pausePointer() {
+        hotKey?.setEscapeEnabled(false)
         pointer?.pause()
         pointing = false
         tapClickEnabled = false
@@ -369,6 +384,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         hotKey = nil
         pointer = nil
         closed = false
+        caseIdentified = false
         orientationReady = false
         active = false
         preparing = false
