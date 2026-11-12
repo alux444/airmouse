@@ -46,6 +46,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     private var hotKey: HotKey?
     private var lastMotion: TimeInterval = 0
     private var lastLease: TimeInterval = 0
+    private var silentOutput: CaseSilentOutput?
 
     func toggle() {
         if active { stop("Test stopped."); return }
@@ -144,6 +145,8 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("AirMouse-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         directory = folder
+        silentOutput = CaseSilentOutput(address: target.address)
+        silentOutput?.refresh()
         let address = folder.appendingPathComponent("target.txt")
         try Data(target.address.utf8).write(to: address, options: .atomic)
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: address.path)
@@ -201,6 +204,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
             do { try renewLease(); lastLease = now } catch { stop("Couldn’t maintain the test session."); return }
         }
         checkLid()
+        silentOutput?.refresh()
         if closed && now - lastMotion > 2 {
             stop("Motion stopped. Reconnect the case to continue.")
             return
@@ -218,7 +222,10 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
               let data = try? Data(contentsOf: directory.appendingPathComponent("session/status.json")),
               let status = CaseLidStatus(data: data) else { return }
         if let error = status.error, !error.isEmpty {
-            stop("The case connection failed: \(error). Open the lid and retry.")
+            let reason = error == "open baseline unavailable" ?
+                "No fresh case motion arrived. Reconnect the AirPods with the lid open." :
+                "The case connection failed: \(error). Open the lid and retry."
+            stop(reason)
             return
         }
         if closed && !status.closed { stop("The case opened. The mouse stopped."); return }
@@ -324,6 +331,8 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     func stop(_ reason: String = "Test stopped.") {
         guard active else { return }
         pausePointer()
+        silentOutput?.stop()
+        silentOutput = nil
         stopping = true
         preparing = false
         message = reason
@@ -355,6 +364,8 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         pipe = nil
         errorPipe = nil
         bluetooth = nil
+        silentOutput?.stop()
+        silentOutput = nil
         hotKey = nil
         pointer = nil
         closed = false

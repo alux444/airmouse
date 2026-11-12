@@ -53,7 +53,7 @@ struct CaseMotionLabApp: App {
                             .frame(height: 100)
                     }
                 }
-                Text("The case reconnects during setup. Control–Option–Space pauses the mouse. Closed-case operation uses an undocumented diagnostic connection.")
+                Text("The case reconnects during setup and may receive silent audio. Control–Option–Space pauses the mouse. Closed-case operation uses an undocumented diagnostic connection.")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
