@@ -217,8 +217,14 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         guard let directory,
               let data = try? Data(contentsOf: directory.appendingPathComponent("session/status.json")),
               let status = CaseLidStatus(data: data) else { return }
-        if let error = status.error, !error.isEmpty { stop("The case stopped responding. Connect again, then open the lid."); return }
+        if let error = status.error, !error.isEmpty {
+            stop("The case connection failed: \(error). Open the lid and retry.")
+            return
+        }
         if closed && !status.closed { stop("The case opened. The mouse stopped."); return }
+        if !closed && !status.baselineReady && received > 0 {
+            message = "Motion is arriving. Waiting for the case to identify itself; keep the lid open."
+        }
         guard !closed, status.baselineReady else { return }
         guard status.closed else { message = "Motion is ready. Close the lid to begin calibration."; return }
         do {
