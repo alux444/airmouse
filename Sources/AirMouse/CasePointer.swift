@@ -5,6 +5,7 @@ protocol CaseOrientationSource {
     func feed(_ rows: [[Double]]) -> (ready: Bool, point: CGPoint?)?
     func setCenter() -> Bool
     func setAxis(_ axis: String) -> Bool
+    func reset()
 }
 
 enum CaseCalibration: Equatable {
@@ -53,6 +54,13 @@ final class CasePointer {
         filter = CasePointerFilter()
         recentPoints.removeAll()
         return true
+    }
+
+    func resetCalibration() {
+        pause()
+        calibration = .center
+        ready = false
+        orientation.reset()
     }
 
     func pause() {

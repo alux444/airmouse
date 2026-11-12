@@ -4,12 +4,18 @@ import JavaScriptCore
 final class CaseOrientation: CaseOrientationSource {
     private let context: JSContext
 
-    init() throws {
-        guard let path = Bundle.main.url(forResource: "CaseOrientation", withExtension: "js"),
-              let context = JSContext() else { throw LabError.message("Motion calibration component is missing.") }
-        let source = try String(contentsOf: path, encoding: .utf8).replacingOccurrences(of: "export ", with: "")
+    convenience init() throws {
+        guard let path = Bundle.main.url(forResource: "CaseOrientation", withExtension: "js") else {
+            throw LabError.message("Motion calibration component is missing.")
+        }
+        try self.init(source: String(contentsOf: path, encoding: .utf8))
+    }
+
+    init(source: String) throws {
+        guard let context = JSContext() else { throw LabError.message("Motion calibration component is missing.") }
         self.context = context
-        context.evaluateScript(source + "\nvar fusion = new Orientation(); var grip = new Grip();")
+        let script = source.replacingOccurrences(of: "export ", with: "")
+        context.evaluateScript(script + "\nvar fusion = new Orientation(); var grip = new Grip();")
         guard context.exception == nil else { throw LabError.message("Motion calibration couldn’t start.") }
     }
 
@@ -21,6 +27,11 @@ final class CaseOrientation: CaseOrientationSource {
         guard let values = result["point"] as? [Double], values.count == 2,
               values.allSatisfy(\.isFinite) else { return (ready, nil) }
         return (ready, CGPoint(x: values[0], y: values[1]))
+    }
+
+    func reset() {
+        context.exception = nil
+        context.evaluateScript("fusion = new Orientation(); grip = new Grip();")
     }
 
     func setCenter() -> Bool {

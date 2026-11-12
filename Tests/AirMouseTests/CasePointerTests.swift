@@ -6,9 +6,11 @@ private final class FakeOrientation: CaseOrientationSource {
     var ready = true
     var point: CGPoint? = CGPoint(x: 1, y: 0)
     var axes: [String] = []
+    var resetCount = 0
     func feed(_ rows: [[Double]]) -> (ready: Bool, point: CGPoint?)? { (ready, point) }
     func setCenter() -> Bool { true }
     func setAxis(_ axis: String) -> Bool { axes.append(axis); return true }
+    func reset() { resetCount += 1 }
 }
 
 private final class FakePointerControls: SystemControls {
@@ -40,6 +42,20 @@ final class CasePointerTests: XCTestCase {
         XCTAssertEqual(controls.moves.count, 1)
         pointer.click(time: 2)
         XCTAssertTrue(controls.clicks.isEmpty)
+    }
+
+    func testResetCalibrationWaitsForFreshMotion() {
+        let orientation = FakeOrientation()
+        let pointer = CasePointer(orientation: orientation, controls: FakePointerControls())
+        let bounds = CGRect(x: 0, y: 0, width: 100, height: 100)
+        pointer.feed([], bounds: bounds, time: 0)
+        _ = pointer.capture(); _ = pointer.capture(); _ = pointer.capture(); _ = pointer.start()
+        pointer.resetCalibration()
+        XCTAssertFalse(pointer.enabled)
+        XCTAssertFalse(pointer.ready)
+        XCTAssertEqual(pointer.calibration, .center)
+        XCTAssertEqual(orientation.resetCount, 1)
+        XCTAssertFalse(pointer.capture())
     }
 
     func testLostOrientationPausesAndRequiresCalibrationAgain() {
