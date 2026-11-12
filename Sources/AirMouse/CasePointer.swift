@@ -19,6 +19,7 @@ final class CasePointer {
     private let controls: SystemControls
     private var filter = CasePointerFilter()
     private var holdUntil: TimeInterval = 0
+    private var recentPoints: [(time: TimeInterval, position: CGPoint)] = []
     private(set) var calibration: CaseCalibration = .center
     private(set) var ready = false
     private(set) var enabled = false
@@ -50,12 +51,14 @@ final class CasePointer {
         guard ready, calibration == .complete else { return false }
         enabled = true
         filter = CasePointerFilter()
+        recentPoints.removeAll()
         return true
     }
 
     func pause() {
         enabled = false
         filter = CasePointerFilter()
+        recentPoints.removeAll()
     }
 
     func feed(_ rows: [[Double]], bounds: CGRect, time: TimeInterval) {
@@ -74,13 +77,19 @@ final class CasePointer {
             return row[2] / 1_000_000
         }.max() ?? time
         let smooth = filter.feed(next, at: sensorTime)
-        controls.movePointer(to: CGPoint(x: bounds.minX + smooth.x * bounds.width,
-                                         y: bounds.minY + smooth.y * bounds.height))
+        let position = CGPoint(x: bounds.minX + smooth.x * bounds.width,
+                               y: bounds.minY + smooth.y * bounds.height)
+        recentPoints.append((time: sensorTime, position: position))
+        recentPoints.removeAll { sensorTime - $0.time > 0.5 }
+        controls.movePointer(to: position)
     }
 
-    func click(time: TimeInterval) {
-        guard enabled, let position = controls.pointerPosition() else { return }
+    func click(time: TimeInterval, since: TimeInterval? = nil) {
+        guard enabled else { return }
+        let beforeTap = since.flatMap { start in recentPoints.last { $0.time < start }?.position }
+        guard let position = beforeTap ?? controls.pointerPosition() else { return }
         holdUntil = time + 0.2
+        controls.movePointer(to: position)
         controls.click(at: position)
     }
 }

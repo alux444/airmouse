@@ -80,6 +80,21 @@ final class CasePointerTests: XCTestCase {
         XCTAssertGreaterThan(controls.moves.last?.x ?? 0, 850)
     }
 
+    func testClickUsesPointerPositionBeforeTapMotion() {
+        let orientation = FakeOrientation()
+        orientation.point = CGPoint(x: 0.4, y: 0.5)
+        let controls = FakePointerControls()
+        let pointer = CasePointer(orientation: orientation, controls: controls)
+        let bounds = CGRect(x: 0, y: 0, width: 100, height: 100)
+        pointer.feed([], bounds: bounds, time: 0)
+        _ = pointer.capture(); _ = pointer.capture(); _ = pointer.capture(); _ = pointer.start()
+        pointer.feed([], bounds: bounds, time: 1)
+        orientation.point = CGPoint(x: 0.8, y: 0.5)
+        pointer.feed([], bounds: bounds, time: 1.3)
+        pointer.click(time: 1.3, since: 1.1)
+        XCTAssertEqual(controls.clicks, [CGPoint(x: 40, y: 50)])
+    }
+
     func testClickFreezesPointerBriefly() {
         let controls = FakePointerControls()
         let pointer = CasePointer(orientation: FakeOrientation(), controls: controls)
@@ -90,8 +105,8 @@ final class CasePointerTests: XCTestCase {
         pointer.click(time: 1)
         pointer.feed([], bounds: bounds, time: 1.1)
         XCTAssertEqual(controls.clicks.count, 1)
-        XCTAssertEqual(controls.moves.count, 1)
-        pointer.feed([], bounds: bounds, time: 1.3)
         XCTAssertEqual(controls.moves.count, 2)
+        pointer.feed([], bounds: bounds, time: 1.3)
+        XCTAssertEqual(controls.moves.count, 3)
     }
 }
