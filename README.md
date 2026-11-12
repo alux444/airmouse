@@ -1,6 +1,6 @@
 # AirMouse
 
-AirMouse is a native macOS prototype for controlling your Mac using motion from compatible AirPods. The current motion implementation assumes the AirPods are being worn; closed-case control is not implemented. Motion stays on your Mac.
+AirMouse is a native macOS prototype for controlling your Mac using motion from compatible AirPods. The main app uses motion from AirPods worn in your ears. A separate case-mouse experiment is in progress. Motion stays on your Mac.
 
 ## Run it
 
@@ -19,3 +19,20 @@ Use **Control–Option–Space** to start or pause from anywhere. Switching mode
 - **Scroll:** tilt to scroll and return to centre to stop. Reverse the direction if needed.
 
 Run `swift test` for motion and action tests. Live tracking and permissions need a real Mac and compatible headphones.
+
+## Try the experimental case mouse
+
+The Case Lab explores using AirPods in their closed case as a pointer. It is separate from the main app, and closed-case pointing and tapping have not yet been verified on this pair.
+
+Build and open the lab:
+
+```sh
+./Experiments/CaseMotionLab/build.sh
+open build/CaseMotionLab.app
+```
+
+Connect your AirPods with both earbuds in the open case. Choose **Connect Case**, wait for the prompt, and close the lid. If the case connects, follow the calibration prompts. **Start Mouse** requires Accessibility permission for this exact Case Lab app. Control–Option–Space pauses the pointer.
+
+With the mouse paused, choose **Teach Tap** and tap the same spot three to six times. Test several more taps against the count before enabling **Use taps to click**. Tap detection remains experimental and may miss taps or count unintended motion.
+
+The lab uses an undocumented connection from [AirPointer](https://github.com/oscarcreatess/airpointer). It reconnects the AirPods, may interrupt audio, and can consume case diagnostic data during a closed-case session. It leaves some connection settings changed because their previous values cannot be read. The lab does not select a different system audio output and stops if that output changes.
