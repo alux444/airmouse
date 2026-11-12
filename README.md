@@ -31,8 +31,8 @@ Build and open AirMouse Case:
 open "build/AirMouse Case.app"
 ```
 
-Connect your AirPods with both earbuds in the open case. Choose **Connect**, wait for the prompt, and close the lid. If the case connects, follow the calibration prompts. **Start Mouse** requires Accessibility permission for this exact AirMouse Case app. Press Escape or Control–Option–Space to pause the pointer.
+Connect your AirPods with both earbuds in the open case. Choose **Connect**, wait for the prompt, and close the lid. Teach your tap, then tap three more times to check the count. Set the case down until it settles, then aim at the centre, right and top of the screen, tapping to capture each position.
 
-With the mouse paused, choose **Teach Tap** and tap the same spot three to six times. Test several more taps against the count before enabling **Use taps to click**. Tap detection remains experimental and may miss taps or count unintended motion.
+After calibration, AirMouse starts pointing and uses taps to click. macOS must grant Accessibility permission to this exact AirMouse Case app. Press Escape or Control–Option–Space to pause the pointer and clicking. While paused, you can turn tap clicking off or teach it again. Tap detection remains experimental and may miss taps or count unintended motion.
 
 AirMouse Case uses an undocumented connection from [AirPointer](https://github.com/oscarcreatess/airpointer). It reconnects the AirPods, may interrupt audio, and can consume case diagnostic data during a closed-case session. It leaves some connection settings changed because their previous values cannot be read. AirMouse Case tries to play silence directly to the AirPods to keep their audio link active. It does not select a different system audio output and stops if that output changes.

@@ -20,8 +20,11 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     @Published private(set) var calibration: CaseCalibration = .center
     @Published private(set) var orientationReady = false
     @Published private(set) var pointing = false
-    @Published var tapClickEnabled = false
+    @Published private(set) var tapClickEnabled = false
     @Published private(set) var tapTrained = false
+    @Published private(set) var tapTeaching = false
+    @Published private(set) var tapFailure = false
+    @Published private(set) var tapConfirmed = false
     @Published private(set) var message = "Put both AirPods in their case, leave it open, and connect them to this Mac."
 
     private var bluetooth: CBCentralManager?
@@ -62,6 +65,9 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         pointing = false
         tapClickEnabled = false
         tapTrained = false
+        tapTeaching = false
+        tapFailure = false
+        tapConfirmed = false
         lastMotion = 0
         lastLease = 0
         hotKey = HotKey { [weak self] in Task { @MainActor in self?.pausePointer() } }
@@ -118,13 +124,19 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     }
 
     func teachTap() {
-        guard active, closed, !pointing, received > 0 else { return }
+        guard active, closed, caseIdentified, !pointing, received > 0 else { return }
         learner = ClosedCaseTapLearner()
+        tapTeaching = true
+        tapFailure = false
         trainedDetector = ClosedCaseTapDetector()
         trainedTaps = 0
         isTrained = false
         tapTrained = false
         tapClickEnabled = false
+        tapConfirmed = false
+        pointer?.resetCalibration()
+        calibration = .center
+        orientationReady = false
         trainingStatus = "Keep the case still; tap the same spot three to six times."
     }
 
@@ -233,7 +245,8 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         if closed && !status.closed { stop("The case opened. The mouse stopped."); return }
         if closed && status.caseIdentified && !caseIdentified {
             caseIdentified = true
-            message = "Case ready. Set it down and hold it still to calibrate."
+            message = "Case ready. Teach a tap to get started."
+            teachTap()
         }
         if !closed && !status.baselineReady && received > 0 {
             message = "Motion is arriving. Waiting for the case to identify itself; keep the lid open."
@@ -254,7 +267,12 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
             return
         }
         calibration = pointer.calibration
-        message = calibration == .complete ? "Calibration complete. Start the mouse when you’re ready." : "Follow the next calibration step."
+        guard calibration == .complete else {
+            message = "Follow the next calibration step."
+            return
+        }
+        message = "Calibration complete."
+        if tapConfirmed { startPointer() }
     }
 
     func startPointer() {
@@ -280,8 +298,38 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     func pausePointer() {
         hotKey?.setEscapeEnabled(false)
         pointer?.pause()
+        if pointing { message = "Mouse paused. Start it again when you’re ready." }
         pointing = false
-        tapClickEnabled = false
+    }
+
+    @discardableResult
+    func setTapClickEnabled(_ enabled: Bool) -> Bool {
+        guard !enabled || (caseIdentified && tapConfirmed && tapTrained && calibration == .complete) else { return false }
+        tapClickEnabled = enabled
+        return true
+    }
+
+    private func routeTap(since: TimeInterval) {
+        let context = CaseTapContext(tapConfirmed: tapConfirmed, calibrated: calibration == .complete,
+                                     motionReady: orientationReady, pointing: pointing, clickEnabled: tapClickEnabled)
+        switch caseTapAction(for: context) {
+        case .verify:
+            trainedTaps += 1
+            if trainedTaps >= 3 {
+                tapConfirmed = true
+                tapClickEnabled = true
+                pointer?.resetCalibration()
+                calibration = .center
+                orientationReady = false
+                message = "Tap learned. Set the case down and hold it still."
+            }
+        case .calibrate:
+            captureCalibration()
+        case .click:
+            pointer?.click(time: lastMotion, since: since)
+        case .ignore:
+            break
+        }
     }
 
     private func renewLease() throws {
@@ -321,18 +369,22 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
                     trainedDetector.direction = direction
                     isTrained = true
                     tapTrained = true
+                    tapTeaching = false
                     learner = nil
                     trainingStatus = "Tap learned. Try five more taps to test it."
                 case .failed:
+                    tapTeaching = false
+                    tapFailure = true
                     learner = nil
                     trainingStatus = "Taps varied too much. Try teaching the same spot again."
                 }
             }
         } else if isTrained {
             let events = trainedDetector.feed(rows)
-            let taps = events.filter { if case .tap = $0 { return true }; return false }.count
-            trainedTaps += taps
-            if tapClickEnabled, pointing, taps > 0 { pointer?.click(time: lastMotion) }
+            for event in events {
+                guard case .tap(let since, _, _) = event else { continue }
+                routeTap(since: since)
+            }
             trainedDetector.ignored.removeAll()
         }
         if closed {
@@ -386,6 +438,10 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         closed = false
         caseIdentified = false
         orientationReady = false
+        tapTeaching = false
+        tapFailure = false
+        tapClickEnabled = false
+        tapConfirmed = false
         active = false
         preparing = false
         stopping = false
