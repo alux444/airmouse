@@ -10,3 +10,6 @@ CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swiftc -parse-as-library \
 CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swiftc -parse-as-library \
   Experiments/CaseMotionLab/Checks/OrientationChecks.swift -framework JavaScriptCore -o "$TEST_BINARY"
 "$TEST_BINARY"
+CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swiftc -parse-as-library \
+  Experiments/CaseMotionLab/CaseLidStatus.swift Experiments/CaseMotionLab/Checks/CaseLidChecks.swift -o "$TEST_BINARY"
+"$TEST_BINARY"

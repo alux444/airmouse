@@ -1,7 +1,7 @@
 import Foundation
 import JavaScriptCore
 
-final class CaseOrientation {
+final class CaseOrientation: CaseOrientationSource {
     private let context: JSContext
 
     init() throws {
@@ -14,6 +14,7 @@ final class CaseOrientation {
     }
 
     func feed(_ rows: [[Double]]) -> (ready: Bool, point: CGPoint?)? {
+        context.exception = nil
         context.setObject(rows, forKeyedSubscript: "rows" as NSString)
         guard let result = context.evaluateScript("for (const row of rows) fusion.feed(row); ({ready: fusion.ready, point: grip.point(fusion.q)})")?.toDictionary() as? [String: Any],
               context.exception == nil, let ready = result["ready"] as? Bool else { return nil }

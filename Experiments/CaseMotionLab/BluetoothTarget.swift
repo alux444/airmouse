@@ -17,10 +17,10 @@ struct BluetoothTarget {
         task.waitUntilExit()
         guard task.terminationStatus == 0,
               let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let info = (root["SPBluetoothDataType"] as? [[String: Any]])?.first,
-              let entries = info["device_connected"] as? [[String: Any]] else {
+              let info = (root["SPBluetoothDataType"] as? [[String: Any]])?.first else {
             throw LabError.message("Couldn’t read connected Bluetooth devices.")
         }
+        let entries = info["device_connected"] as? [[String: Any]] ?? []
         let models: Set<String> = ["0x2014", "0x2024", "0x2027", "0x2019", "0x201b"]
         let matches: [BluetoothTarget] = entries.flatMap { entry in
             entry.compactMap { name, value in

@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import CoreBluetooth
 import CoreAudio
 import Foundation
@@ -14,6 +15,12 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     @Published private(set) var trainingStatus = "Teach a tap to compare the trained detector."
     @Published private(set) var trainedTaps = 0
     @Published private(set) var details = ""
+    @Published private(set) var closed = false
+    @Published private(set) var calibration: CaseCalibration = .center
+    @Published private(set) var orientationReady = false
+    @Published private(set) var pointing = false
+    @Published var tapClickEnabled = false
+    @Published private(set) var tapTrained = false
     @Published private(set) var message = "Put both AirPods in their case, leave it open, and connect them to this Mac."
 
     private var bluetooth: CBCentralManager?
@@ -35,11 +42,26 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     private var stopping = false
     private var preparing = false
     private var generation = 0
+    private var pointer: CasePointer?
+    private var hotKey: HotKey?
+    private var lastMotion: TimeInterval = 0
+    private var lastLease: TimeInterval = 0
 
     func toggle() {
         if active { stop("Test stopped."); return }
         generation += 1
+        do { pointer = CasePointer(orientation: try CaseOrientation(), controls: MacSystemControls()) }
+        catch { message = error.localizedDescription; return }
         pending.removeAll()
+        closed = false
+        calibration = .center
+        orientationReady = false
+        pointing = false
+        tapClickEnabled = false
+        tapTrained = false
+        lastMotion = 0
+        lastLease = 0
+        hotKey = HotKey { [weak self] in Task { @MainActor in self?.pausePointer() } }
         active = true
         preparing = true
         stopping = false
@@ -93,11 +115,13 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     }
 
     func teachTap() {
-        guard active, received > 0 else { return }
+        guard active, closed, !pointing, received > 0 else { return }
         learner = ClosedCaseTapLearner()
         trainedDetector = ClosedCaseTapDetector()
         trainedTaps = 0
         isTrained = false
+        tapTrained = false
+        tapClickEnabled = false
         trainingStatus = "Keep the case still; tap the same spot three to six times."
     }
 
@@ -161,7 +185,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         try output.fileHandleForWriting.close()
         try errors.fileHandleForWriting.close()
         message = "Connecting to \(target.name)… Keep the case open."
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
     }
@@ -172,13 +196,64 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
             stop("The system audio output changed, so the test stopped. Check Sound settings.")
             return
         }
-        do { try renewLease() } catch { stop("Couldn’t maintain the test session.") }
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - lastLease >= 1 {
+            do { try renewLease(); lastLease = now } catch { stop("Couldn’t maintain the test session."); return }
+        }
+        checkLid()
+        if closed && now - lastMotion > 2 {
+            stop("Motion stopped. Reconnect the case to continue.")
+            return
+        }
         sampleCount = received
         peak = meter.peak
         detectedTaps = tapCount
         let stats = detector.diagnostics
         candidates = stats.candidates
         filterSummary = "Unsettled: \(stats.insufficientRest), moving: \(stats.movement), no rotation: \(stats.missingRotation), rotating: \(stats.rotation)"
+    }
+
+    private func checkLid() {
+        guard let directory,
+              let data = try? Data(contentsOf: directory.appendingPathComponent("session/status.json")),
+              let status = CaseLidStatus(data: data) else { return }
+        if let error = status.error, !error.isEmpty { stop("The case stopped responding. Connect again, then open the lid."); return }
+        if closed && !status.closed { stop("The case opened. The mouse stopped."); return }
+        guard !closed, status.baselineReady else { return }
+        guard status.closed else { message = "Motion is ready. Close the lid to begin calibration."; return }
+        do {
+            try Data("closed_confirmed\n".utf8).write(to: directory.appendingPathComponent("session/phase.txt"), options: .atomic)
+            closed = true
+            message = "Case closed. Hold it still while motion settles."
+        } catch { stop("Couldn’t start the closed-case session.") }
+    }
+
+    func captureCalibration() {
+        guard closed, ProcessInfo.processInfo.systemUptime - lastMotion < 1,
+              let pointer, pointer.capture() else {
+            message = "Move the case farther in that direction and try again."
+            return
+        }
+        calibration = pointer.calibration
+        message = calibration == .complete ? "Calibration complete. Start the mouse when you’re ready." : "Follow the next calibration step."
+    }
+
+    func startPointer() {
+        guard closed, ProcessInfo.processInfo.systemUptime - lastMotion < 1, let pointer else { return }
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        guard AXIsProcessTrustedWithOptions(options) else {
+            message = "Allow AirMouse Case Lab in Accessibility, then try Start Mouse again."
+            return
+        }
+        guard pointer.start() else { message = "Wait for motion and complete calibration first."; return }
+        pointing = true
+        message = "Mouse is on. Press Control–Option–Space to pause."
+    }
+
+    func pausePointer() {
+        pointer?.pause()
+        pointing = false
+        tapClickEnabled = false
     }
 
     private func renewLease() throws {
@@ -206,6 +281,8 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
             rows.append([0, Double(sample.service), sample.sensorTime * 1_000_000, 0,
                          sample.x * 100_000, sample.y * 100_000, sample.z * 100_000])
         }
+        guard !rows.isEmpty else { return }
+        lastMotion = ProcessInfo.processInfo.systemUptime
         if learner != nil {
             let events = learner?.feed(rows) ?? []
             for event in events {
@@ -215,6 +292,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
                 case .finished(let direction):
                     trainedDetector.direction = direction
                     isTrained = true
+                    tapTrained = true
                     learner = nil
                     trainingStatus = "Tap learned. Try five more taps to test it."
                 case .failed:
@@ -224,14 +302,22 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
             }
         } else if isTrained {
             let events = trainedDetector.feed(rows)
-            trainedTaps += events.filter { if case .tap = $0 { return true }; return false }.count
+            let taps = events.filter { if case .tap = $0 { return true }; return false }.count
+            trainedTaps += taps
+            if tapClickEnabled, pointing, taps > 0 { pointer?.click(time: lastMotion) }
             trainedDetector.ignored.removeAll()
         }
-        if received > 0 { message = "Motion is arriving. Reset the peak, then gently tap an AirPod in the case." }
+        if closed {
+            pointer?.feed(rows, bounds: CGDisplayBounds(CGMainDisplayID()), time: lastMotion)
+            orientationReady = pointer?.ready == true
+            calibration = pointer?.calibration ?? .center
+            if pointing && pointer?.enabled != true { pausePointer(); message = "Motion was lost. Calibrate again." }
+        }
     }
 
     func stop(_ reason: String = "Test stopped.") {
         guard active else { return }
+        pausePointer()
         stopping = true
         preparing = false
         message = reason
@@ -263,6 +349,10 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         pipe = nil
         errorPipe = nil
         bluetooth = nil
+        hotKey = nil
+        pointer = nil
+        closed = false
+        orientationReady = false
         active = false
         preparing = false
         stopping = false
