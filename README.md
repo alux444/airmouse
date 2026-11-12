@@ -22,17 +22,17 @@ Run `swift test` for motion and action tests. Live tracking and permissions need
 
 ## Try the experimental case mouse
 
-The Case Lab explores using AirPods in their closed case as a pointer. It is separate from the main app. Closed-case motion and pointer movement have been observed, but reconnection and tap detection remain unreliable.
+AirMouse Case explores using AirPods in their closed case as a pointer. It is separate from the main app. Closed-case motion and pointer movement have been observed, but reconnection and tap detection remain unreliable.
 
-Build and open the lab:
+Build and open AirMouse Case:
 
 ```sh
 ./Experiments/CaseMotionLab/build.sh
-open build/CaseMotionLab.app
+open "build/AirMouse Case.app"
 ```
 
-Connect your AirPods with both earbuds in the open case. Choose **Connect Case**, wait for the prompt, and close the lid. If the case connects, follow the calibration prompts. **Start Mouse** requires Accessibility permission for this exact Case Lab app. Press Escape or Control–Option–Space to pause the pointer.
+Connect your AirPods with both earbuds in the open case. Choose **Connect**, wait for the prompt, and close the lid. If the case connects, follow the calibration prompts. **Start Mouse** requires Accessibility permission for this exact AirMouse Case app. Press Escape or Control–Option–Space to pause the pointer.
 
 With the mouse paused, choose **Teach Tap** and tap the same spot three to six times. Test several more taps against the count before enabling **Use taps to click**. Tap detection remains experimental and may miss taps or count unintended motion.
 
-The lab uses an undocumented connection from [AirPointer](https://github.com/oscarcreatess/airpointer). It reconnects the AirPods, may interrupt audio, and can consume case diagnostic data during a closed-case session. It leaves some connection settings changed because their previous values cannot be read. The lab tries to play silence directly to the AirPods to keep their audio link active. It does not select a different system audio output and stops if that output changes.
+AirMouse Case uses an undocumented connection from [AirPointer](https://github.com/oscarcreatess/airpointer). It reconnects the AirPods, may interrupt audio, and can consume case diagnostic data during a closed-case session. It leaves some connection settings changed because their previous values cannot be read. AirMouse Case tries to play silence directly to the AirPods to keep their audio link active. It does not select a different system audio output and stops if that output changes.

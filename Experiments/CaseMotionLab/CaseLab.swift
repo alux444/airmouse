@@ -103,7 +103,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard preparing else { return }
         if CBManager.authorization == .denied || CBManager.authorization == .restricted {
-            finish("Allow Bluetooth for AirMouse Case Lab in Privacy & Security.")
+            finish("Allow Bluetooth for AirMouse Case in Privacy & Security.")
             return
         }
         if central.state == .poweredOff { finish("Bluetooth is off. Turn it on, then retry."); return }
@@ -261,7 +261,7 @@ final class CaseLab: NSObject, ObservableObject, @preconcurrency CBCentralManage
         guard closed, caseIdentified, ProcessInfo.processInfo.systemUptime - lastMotion < 1, let pointer else { return }
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         guard AXIsProcessTrustedWithOptions(options) else {
-            message = "Allow AirMouse Case Lab in Accessibility, then try Start Mouse again."
+            message = "Allow AirMouse Case in Accessibility, then try Start Mouse again."
             return
         }
         guard hotKey?.setEscapeEnabled(true) == true else {
