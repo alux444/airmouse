@@ -9,3 +9,5 @@ AirMouse uses this helper for an experimental case mouse. Once the open-case bas
 `Orientation.js` is copied without modification from `Sources/AirPointer/Session/Orientation.js` at the same commit. It provides motion fusion and the three-point screen calibration for the case pointer.
 
 `Experiments/CaseMotionLab/CaseSilentOutput.swift` adapts the targeted silent output from `Sources/AirPointer/Session/AudioOutputGuard.swift` at the same commit. It does not include the reference app’s default audio-device switching.
+
+`Sources/AirMouse/CasePointerFilter.swift` adapts the adaptive pointer filter in `Sources/AirPointer/Session/ClosedCaseSession.swift` at the same commit.

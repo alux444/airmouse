@@ -58,6 +58,28 @@ final class CasePointerTests: XCTestCase {
         XCTAssertFalse(pointer.start())
     }
 
+    func testSteadiesSmallJitterWhileFollowingDeliberateMovement() {
+        let orientation = FakeOrientation()
+        orientation.point = CGPoint(x: 0.5, y: 0.5)
+        let controls = FakePointerControls()
+        let pointer = CasePointer(orientation: orientation, controls: controls)
+        let bounds = CGRect(x: 0, y: 0, width: 1000, height: 1000)
+        pointer.feed([], bounds: bounds, time: 0)
+        _ = pointer.capture(); _ = pointer.capture(); _ = pointer.capture(); _ = pointer.start()
+        pointer.feed([], bounds: bounds, time: 1)
+        for step in 1...60 {
+            orientation.point = CGPoint(x: step.isMultiple(of: 2) ? 0.49 : 0.51, y: 0.5)
+            pointer.feed([], bounds: bounds, time: 1 + Double(step) * 0.01)
+        }
+        let recent = controls.moves.suffix(30).map(\.x)
+        XCTAssertLessThan((recent.max() ?? 0) - (recent.min() ?? 0), 1.5)
+        orientation.point = CGPoint(x: 0.9, y: 0.5)
+        for step in 61...80 {
+            pointer.feed([], bounds: bounds, time: 1 + Double(step) * 0.01)
+        }
+        XCTAssertGreaterThan(controls.moves.last?.x ?? 0, 850)
+    }
+
     func testClickFreezesPointerBriefly() {
         let controls = FakePointerControls()
         let pointer = CasePointer(orientation: FakeOrientation(), controls: controls)

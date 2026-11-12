@@ -17,7 +17,7 @@ enum CaseCalibration: Equatable {
 final class CasePointer {
     private let orientation: CaseOrientationSource
     private let controls: SystemControls
-    private var filtered: CGPoint?
+    private var filter = CasePointerFilter()
     private var holdUntil: TimeInterval = 0
     private(set) var calibration: CaseCalibration = .center
     private(set) var ready = false
@@ -49,13 +49,13 @@ final class CasePointer {
     func start() -> Bool {
         guard ready, calibration == .complete else { return false }
         enabled = true
-        filtered = nil
+        filter = CasePointerFilter()
         return true
     }
 
     func pause() {
         enabled = false
-        filtered = nil
+        filter = CasePointerFilter()
     }
 
     func feed(_ rows: [[Double]], bounds: CGRect, time: TimeInterval) {
@@ -69,10 +69,11 @@ final class CasePointer {
         guard enabled, time >= holdUntil, let point = result.point,
               point.x.isFinite, point.y.isFinite, bounds.width > 0, bounds.height > 0 else { return }
         let next = CGPoint(x: min(1, max(0, point.x)), y: min(1, max(0, point.y)))
-        let previous = filtered ?? next
-        let smooth = CGPoint(x: previous.x + (next.x - previous.x) * 0.25,
-                             y: previous.y + (next.y - previous.y) * 0.25)
-        filtered = smooth
+        let sensorTime = rows.compactMap { row -> TimeInterval? in
+            guard row.count == 7, row[2].isFinite else { return nil }
+            return row[2] / 1_000_000
+        }.max() ?? time
+        let smooth = filter.feed(next, at: sensorTime)
         controls.movePointer(to: CGPoint(x: bounds.minX + smooth.x * bounds.width,
                                          y: bounds.minY + smooth.y * bounds.height))
     }
