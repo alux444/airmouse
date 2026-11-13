@@ -1,5 +1,7 @@
 # AirMouse design
 
-AirMouse is a quiet native Mac utility. Keep tracking state, its main action, connection feedback and the selected mode easy to find in one compact window. Only one mode is active at a time; changing modes pauses tracking. The menu bar and global shortcut provide a persistent way to pause.
+AirMouse is a quiet native Mac utility. Guide case setup through a compact floating window, using system typography, semantic colours, and clear instructions. Animate the native case symbol to explain each step and respect Reduce Motion.
 
-Use system typography, standard macOS controls and semantic colours so the interface follows the user's appearance. Prefer clear labels and useful status to decorative illustrations or promotional copy. Automatic clicking is opt-in and should make its activation and repeat behaviour clear.
+Keep connection, calibration, and permission feedback visible when needed. While pointing, collapse the setup into a small overlay with a clear pause control. Escape must pause immediately. Make tap-to-click state clear and let people turn it off while paused.
+
+The earlier wearable experiment uses a compact window with native controls. Keep its tracking state, mode, and pause action easy to find.

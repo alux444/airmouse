@@ -1,40 +1,40 @@
 # AirMouse
 
-AirMouse is a native macOS prototype for controlling your Mac using motion from compatible AirPods. The main app uses motion from AirPods worn in your ears. A separate case-mouse experiment is in progress. Motion stays on your Mac.
+AirMouse is an experimental Mac app that turns an AirPods case into a pointer. Move the closed case to point and tap it to click. Press Escape to pause.
 
-For the case-controlled app, open `build/AirMouse Case.app` or follow [the case mouse instructions](#try-the-experimental-case-mouse) below.
+The case mode has been tested with AirPods 4 with Active Noise Cancellation. Connection and tap detection can be unreliable, and tap-to-click in the current setup still needs live testing.
 
-## Run it
+## Build and open
 
-Requires macOS 14 or later, Xcode or the Swift toolchain, and headphones that provide motion data.
-
-```sh
-./build.sh
-open build/AirMouse.app
-```
-
-Put in your AirPods and connect them to the Mac. Start tracking and allow Motion and Accessibility access when requested. If Accessibility is already enabled but AirMouse still asks for access, quit AirMouse, remove its old entry from System Settings → Privacy & Security → Accessibility, and add the exact app you are opening. Development builds are ad-hoc signed, so rebuilding changes their identity and can require this again.
-
-Use **Control–Option–Space** to start or pause from anywhere. Switching modes pauses tracking; start again while looking straight ahead to set the centre. Use **Recenter** to reset it.
-
-- **Pointer:** move the pointer with your head. Optionally enable dwell clicking: hold the pointer still outside AirMouse, then move away before the next click. Dwell clicking is off by default.
-- **Scroll:** tilt to scroll and return to centre to stop. Reverse the direction if needed.
-
-Run `swift test` for motion and action tests. Live tracking and permissions need a real Mac and compatible headphones.
-
-## Try the experimental case mouse
-
-AirMouse Case explores using AirPods in their closed case as a pointer. It is separate from the main app. Closed-case motion and pointer movement have been observed, but reconnection and tap detection remain unreliable.
-
-Build and open AirMouse Case:
+You need macOS 14 or later, Xcode or the Swift toolchain, and compatible AirPods. Build the app from the repository root:
 
 ```sh
 ./Experiments/CaseMotionLab/build.sh
 open "build/AirMouse Case.app"
 ```
 
-Connect your AirPods with both earbuds in the open case. Choose **Connect**, wait for the prompt, and close the lid. Teach your tap, then tap three more times to check the count. Set the case down until it settles, then aim at the centre, right and top of the screen, tapping to capture each position.
+Allow Bluetooth access when prompted. Add the exact app you opened to **System Settings → Privacy & Security → Accessibility** so it can move and click the pointer. Development builds are ad-hoc signed, so you may need to remove the old Accessibility entry and add the app again after rebuilding.
 
-After calibration, AirMouse starts pointing and uses taps to click. macOS must grant Accessibility permission to this exact AirMouse Case app. Press Escape or Control–Option–Space to pause the pointer and clicking. While paused, you can turn tap clicking off or teach it again. Tap detection remains experimental and may miss taps or count unintended motion.
+## Set up the case
 
-AirMouse Case uses an undocumented connection from [AirPointer](https://github.com/oscarcreatess/airpointer). It reconnects the AirPods, may interrupt audio, and can consume case diagnostic data during a closed-case session. It leaves some connection settings changed because their previous values cannot be read. AirMouse Case tries to play silence directly to the AirPods to keep their audio link active. It does not select a different system audio output and stops if that output changes.
+1. Put both AirPods in their open case and connect them to your Mac.
+2. Open AirMouse Case, select **Connect**, and close the lid when prompted.
+3. Tap the closed case to teach your tap, then tap three more times to check it.
+4. Set the case down and hold it still. Aim at the centre, right edge, and top edge of the screen, tapping at each position.
+
+After calibration, the pointer starts and taps are set to click. Press Escape or Control–Option–Space to pause. While paused, you can turn tap clicking off or teach it again. If tapping is difficult during calibration, use **Capture with Button**.
+
+## Connection details
+
+Case mode uses an undocumented connection adapted from [AirPointer](https://github.com/oscarcreatess/airpointer). It reconnects the AirPods, may interrupt audio, and can consume case diagnostic data. It also changes connection settings whose previous values cannot be read back. AirMouse may play silence directly to the AirPods to maintain the connection; it does not change the Mac’s selected audio output and stops if that output changes. See [the vendor notes](Vendor/AirPointer/README.md) for attribution.
+
+## Development
+
+Run the Swift tests and case-specific checks:
+
+```sh
+swift test
+./Experiments/CaseMotionLab/check.sh
+```
+
+The repository also contains an earlier wearable experiment. Build it with `./build.sh` and open `build/AirMouse.app`. It supports head-controlled pointing and scrolling with compatible AirPods worn in your ears.
