@@ -2,6 +2,8 @@
 
 AirMouse is a native macOS prototype for controlling your Mac using motion from compatible AirPods. The main app uses motion from AirPods worn in your ears. A separate case-mouse experiment is in progress. Motion stays on your Mac.
 
+For the case-controlled app, open `build/AirMouse Case.app` or follow [the case mouse instructions](#try-the-experimental-case-mouse) below.
+
 ## Run it
 
 Requires macOS 14 or later, Xcode or the Swift toolchain, and headphones that provide motion data.

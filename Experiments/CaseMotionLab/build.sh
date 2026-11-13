@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 APP="${AIRMOUSE_CASE_BUILD_DIR:-$PWD/build}/AirMouse Case.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" .build/module-cache
+CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swift Experiments/CaseMotionLab/Icon/MakeIcon.swift "$APP/Contents/Resources/AirMouse.icns"
 clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework CoreBluetooth -framework IOBluetooth \
   Vendor/AirPointer/CaseSustainedRenewal.m -o "$APP/Contents/Resources/CaseMotion.bin"
 CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swiftc -swift-version 5 -parse-as-library \
