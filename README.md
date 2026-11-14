@@ -22,7 +22,7 @@ Allow Bluetooth access when prompted. Add the exact app you opened to **System S
 3. Tap the closed case to teach your tap, then tap three more times to check it.
 4. Set the case down and hold it still. Aim at the centre, right edge, and top edge of the screen, tapping at each position.
 
-After calibration, the pointer starts and taps are set to click. Press Escape or Control–Option–Space to pause. While paused, you can turn tap clicking off or teach it again. If tapping is difficult during calibration, use **Capture with Button**.
+After calibration, the pointer starts and taps are set to click. Use the AirMouse menu-bar icon, Escape, or Control–Option–Space to pause. While paused, you can turn tap clicking off or teach it again. If tapping is difficult during calibration, use **Capture with Button**.
 
 ## Connection details
 

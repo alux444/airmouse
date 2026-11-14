@@ -4,25 +4,23 @@ import SwiftUI
 @main
 struct CaseMotionLabApp: App {
     @StateObject private var lab = CaseLab()
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some Scene {
         Window("AirMouse", id: "lab") {
-            Group {
-                if lab.pointing {
-                    compact
-                } else {
-                    expanded
-                }
-            }
-            .frame(width: lab.pointing ? 250 : 360, height: lab.pointing ? 72 : 450)
+            expanded
+            .frame(width: 360, height: 450)
             .background(.regularMaterial)
-            .background(FloatingWindow(compact: lab.pointing))
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: lab.pointing)
-            .onDisappear { lab.stop() }
+            .background(FloatingWindow(pointing: lab.pointing, onClose: { lab.stop() }))
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+
+        MenuBarExtra {
+            MenuBarControls(lab: lab)
+        } label: {
+            Image(systemName: "airpods.gen3.chargingcase.wireless")
+                .accessibilityLabel(lab.pointing ? "AirMouse, mouse active" : "AirMouse")
+        }
     }
 
     private var expanded: some View {
@@ -39,22 +37,6 @@ struct CaseMotionLabApp: App {
             }
             footer
         }
-    }
-
-    private var compact: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "airpods.gen3.chargingcase.wireless")
-                .font(.system(size: 23)).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("AirMouse").font(.callout.weight(.semibold))
-                Text(lab.tapClickEnabled ? "Tap to click" : "Pointing").font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button("Pause") { lab.pausePointer() }
-                .controlSize(.small)
-                .accessibilityHint("You can also press Escape.")
-        }
-        .padding(.horizontal, 16)
     }
 
     @ViewBuilder
@@ -201,8 +183,38 @@ struct CaseMotionLabApp: App {
     }
 }
 
+private struct MenuBarControls: View {
+    @ObservedObject var lab: CaseLab
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Text(status)
+        if lab.pointing {
+            Button("Pause Mouse") { lab.pausePointer() }
+        }
+        Button(lab.pointing ? "Pause and Open AirMouse" : "Open AirMouse") {
+            if lab.pointing { lab.pausePointer() }
+            openWindow(id: "lab")
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        Divider()
+        Button("Quit AirMouse") {
+            lab.stop()
+            NSApp.terminate(nil)
+        }
+    }
+
+    private var status: String {
+        if lab.pointing { return "Mouse active" }
+        if !lab.active { return "Not connected" }
+        if lab.calibration == .complete { return "Mouse paused" }
+        return "Setting up"
+    }
+}
+
 private struct FloatingWindow: NSViewRepresentable {
-    let compact: Bool
+    let pointing: Bool
+    let onClose: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
     func makeNSView(context: Context) -> NSView { NSView() }
@@ -212,18 +224,30 @@ private struct FloatingWindow: NSViewRepresentable {
             guard let window = view.window else { return }
             window.level = .floating
             window.isMovableByWindowBackground = true
-            for kind: NSWindow.ButtonType in [.closeButton, .miniaturizeButton, .zoomButton] {
-                window.standardWindowButton(kind)?.isHidden = compact
+            if context.coordinator.closeObserver == nil {
+                context.coordinator.closeObserver = NotificationCenter.default.addObserver(
+                    forName: NSWindow.willCloseNotification, object: window, queue: .main
+                ) { _ in onClose() }
             }
-            guard context.coordinator.compact != compact, let screen = window.screen ?? NSScreen.main else { return }
-            context.coordinator.compact = compact
-            let visible = screen.visibleFrame
-            window.setFrameOrigin(NSPoint(x: visible.midX - window.frame.width / 2,
-                                          y: visible.maxY - window.frame.height - 8))
+            if context.coordinator.pointing == nil, let screen = window.screen ?? NSScreen.main {
+                let visible = screen.visibleFrame
+                window.setFrameOrigin(NSPoint(x: visible.midX - window.frame.width / 2,
+                                              y: visible.maxY - window.frame.height - 8))
+            }
+            guard context.coordinator.pointing != pointing else { return }
+            let wasPointing = context.coordinator.pointing == true
+            context.coordinator.pointing = pointing
+            if pointing { window.orderOut(nil) }
+            if wasPointing && !pointing { window.orderFrontRegardless() }
         }
     }
 
     final class Coordinator {
-        var compact: Bool?
+        var pointing: Bool?
+        var closeObserver: NSObjectProtocol?
+
+        deinit {
+            if let closeObserver { NotificationCenter.default.removeObserver(closeObserver) }
+        }
     }
 }
